@@ -1,0 +1,25 @@
+Metadata-Version: 2.4
+Name: trustassistant-ai
+Version: 0.1.0
+Summary: AI Shopping Trust Assistant backend project
+Requires-Python: >=3.11
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: sqlalchemy
+Requires-Dist: psycopg2-binary
+Requires-Dist: python-dotenv
+Requires-Dist: pydantic
+Requires-Dist: pydantic-settings
+Requires-Dist: redis
+Requires-Dist: requests
+Requires-Dist: python-jose
+Requires-Dist: passlib[bcrypt]
+Requires-Dist: pytest
+Requires-Dist: httpx
+Requires-Dist: langgraph
+Requires-Dist: langchain
+Requires-Dist: langchain-core
+Requires-Dist: langchain-ollama
+Requires-Dist: typing-extensions
+Requires-Dist: playwright
+Requires-Dist: chromadb

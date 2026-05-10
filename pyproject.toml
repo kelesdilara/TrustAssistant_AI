@@ -1,0 +1,37 @@
+[project]
+name = "trustassistant-ai"
+version = "0.1.0"
+description = "AI Shopping Trust Assistant backend project"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "python-dotenv",
+    "pydantic",
+    "pydantic-settings",
+    "redis",
+    "requests",
+    "python-jose",
+    "passlib[bcrypt]",
+    "pytest",
+    "httpx",
+    "langgraph",
+    "langchain",
+    "langchain-core",
+    "langchain-ollama",
+    "typing-extensions",
+    "playwright",
+    "chromadb",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.uvicorn]
+app = "backend.app.main:app"
+host = "127.0.0.1"
+port = 8001
+reload = true
