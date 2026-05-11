@@ -26,6 +26,10 @@ dependencies = [
     "chromadb",
 ]
 
+[tool.setuptools.packages.find]
+include = ["backend*"]
+exclude = ["mobile*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
