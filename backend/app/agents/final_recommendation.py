@@ -7,72 +7,100 @@ from backend.app.services.scoring_service import (
 
 
 def final_recommendation_agent(state: AnalysisState) -> AnalysisState:
+    analysis_scope = state.get("analysis_scope")
     fake_review_score = state.get("fake_review_score", 50)
     seller_score = state.get("seller_score", 50)
     price_risk_score = state.get("price_risk_score", 50)
 
-    overall_score = calculate_overall_score(
-        fake_review_score=fake_review_score,
-        seller_score=seller_score,
-        price_risk_score=price_risk_score,
-    )
+    review_only = analysis_scope == "product_name_review_only"
+    if review_only:
+        overall_score = max(0, min(100, 100 - fake_review_score))
+    else:
+        overall_score = calculate_overall_score(
+            fake_review_score=fake_review_score,
+            seller_score=seller_score,
+            price_risk_score=price_risk_score,
+        )
 
     product_identifier = (
         state.get("product_name")
         or state.get("product_url")
-        or "Girilen ürün"
+        or "Girilen urun"
     )
 
     risk_factors = []
 
-    if fake_review_score >= 50:
-        risk_factors.append("Yorumlarda sahte/tekrarlı ifade riski var.")
+    if fake_review_score >= 70:
+        risk_factors.append("Yorumlarda yuksek duzeyde tekrar eden kalip ifadeler var.")
+    elif fake_review_score >= 50:
+        risk_factors.append(
+            "Yorumlarda benzer olumlu ifadeler yogun; bu tek basina sahte yorum gostergesi degildir."
+        )
 
-    if seller_score < 70:
-        risk_factors.append("Satıcı güven skoru tam güvenli seviyede değil.")
+    if not review_only and seller_score < 70:
+        risk_factors.append("Satici guven skoru tam guvenli seviyede degil.")
+    if not review_only and seller_score < 60:
+        risk_factors.append("Satici guven skoru dusuk gorunuyor.")
+    elif not review_only and seller_score < 75:
+        risk_factors.append("Satici bilgileri sinirli oldugu icin dikkatli incelenmeli.")
+    if not review_only and price_risk_score >= 50:
+        risk_factors.append("Fiyat veya indirim gercekligi supheli olabilir.")
 
-    if price_risk_score >= 50:
-        risk_factors.append("Fiyat veya indirim gerçekliği şüpheli olabilir.")
+    scope_note = (
+        "Kullanici yalnizca urun adi verdi; ozet sadece yorum sinyallerine dayanmali, "
+        "satici veya fiyat hakkinda yorum yapmamali."
+        if review_only
+        else "Yorum, satici ve fiyat sinyallerini birlikte degerlendir."
+    )
 
     prompt = f"""
-Sen Türkçe konuşan bir alışveriş güven analizi asistanısın.
+Sen Turkce konusan bir alisveris guven analizi asistaniysin.
 
 Kurallar:
-- Sadece Türkçe yaz.
-- İngilizce kelime kullanma.
-- Kullanıcıya doğrudan ve sade konuş.
-- Kesin hüküm verme.
-- En fazla 5 cümle yaz.
-- "Araştırın", "research", "genuine", "product" gibi kelimeler kullanma.
-- Skorları abartmadan açıkla.
+- Sadece Turkce yaz.
+- Ingilizce kelime kullanma.
+- Kullaniciya dogrudan ve sade konus.
+- Kesin hukum verme.
+- En fazla 5 cumle yaz.
+- "Arastirin", "research", "genuine", "product" gibi kelimeler kullanma.
+- Skorlari abartmadan acikla.
 
-Ürün:
+Urun:
 {product_identifier}
 
 Sahte yorum riski:
 {fake_review_score}/100
 
-Satıcı güven skoru:
+Satici guven skoru:
 {seller_score}/100
 
 Fiyat veya indirim risk skoru:
 {price_risk_score}/100
 
-Genel güven skoru:
+Genel guven skoru:
 {overall_score}/100
 
-Risk faktörleri:
+Risk faktorleri:
 {risk_factors}
 
-Kısa bir ürün güven özeti yaz.
+Kapsam notu:
+{scope_note}
+
+Kisa bir urun guven ozeti yaz.
 """
 
     try:
         llm_summary = ask_ollama(prompt)
     except Exception:
-        llm_summary = (
-            f"{product_identifier} için yorum, satıcı ve fiyat sinyalleri birlikte analiz edildi."
-        )
+        if review_only:
+            llm_summary = (
+                f"{product_identifier} icin yalnizca yorum sinyalleri analiz edildi; "
+                "satici ve fiyat icin link gerekir."
+            )
+        else:
+            llm_summary = (
+                f"{product_identifier} icin yorum, satici ve fiyat sinyalleri birlikte analiz edildi."
+            )
 
     state["overall_trust_score"] = overall_score
     state["final_recommendation"] = recommendation_from_score(overall_score)

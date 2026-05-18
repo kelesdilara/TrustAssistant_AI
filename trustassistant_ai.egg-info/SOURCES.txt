@@ -3,9 +3,16 @@ pyproject.toml
 backend/app/__init__.py
 backend/app/main.py
 backend/app/agents/__init__.py
-backend/app/agents/analysis_agent.py
+backend/app/agents/fake_review_detector.py
+backend/app/agents/final_recommendation.py
+backend/app/agents/graph.py
+backend/app/agents/price_analysis.py
+backend/app/agents/review_collector.py
+backend/app/agents/seller_trust.py
+backend/app/agents/state.py
 backend/app/api/__init__.py
 backend/app/api/analysis.py
+backend/app/api/scraper.py
 backend/app/core/__init__.py
 backend/app/core/config.py
 backend/app/db/__init__.py
@@ -20,7 +27,9 @@ backend/app/schemas/__init__.py
 backend/app/schemas/analysis.py
 backend/app/services/__init__.py
 backend/app/services/ollama_service.py
+backend/app/services/product_scraper_service.py
 backend/app/services/scoring_service.py
+backend/app/services/scraper_service.py
 backend/app/utils/__init__.py
 tests/test_health.py
 trustassistant_ai.egg-info/PKG-INFO

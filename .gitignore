@@ -1,5 +1,7 @@
 .env
 venv/
+backend/venv*/
+backend/app/trustassistant_local.db
 __pycache__/
 *.pyc
 .pytest_cache/

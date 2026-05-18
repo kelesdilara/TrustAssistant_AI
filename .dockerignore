@@ -1,0 +1,17 @@
+.git
+.gitignore
+.pytest_cache
+__pycache__
+*.pyc
+htmlcov
+.coverage
+.idea
+.vscode
+backend/venv*
+backend/app/trustassistant_local.db
+mobile/build
+mobile/.dart_tool
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/android/.gradle

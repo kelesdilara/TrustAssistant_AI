@@ -47,7 +47,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _messages.add(
           ChatMessage(
-            text: 'Bir hata oluştu. Lütfen tekrar dene.',
+            text: 'Bir hata olustu: $e',
             isUser: false,
           ),
         );

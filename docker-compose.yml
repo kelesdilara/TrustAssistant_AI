@@ -1,6 +1,46 @@
-version: "3.9"
-
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: trustassistant_backend
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATABASE_URL: ${DOCKER_DATABASE_URL}
+      DOCKER_DATABASE_URL: ${DOCKER_DATABASE_URL}
+      REDIS_URL: ${DOCKER_REDIS_URL}
+      DOCKER_REDIS_URL: ${DOCKER_REDIS_URL}
+      OLLAMA_BASE_URL: ${DOCKER_OLLAMA_BASE_URL}
+      DOCKER_OLLAMA_BASE_URL: ${DOCKER_OLLAMA_BASE_URL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      BACKEND_PORT: 8000
+      POSTGRES_PORT: 5432
+      REDIS_PORT: 6379
+      OLLAMA_PORT: 11434
+    ports:
+      - "${BACKEND_PORT}:8000"
+    depends_on:
+      - db
+      - redis
+      - ollama
+
+  frontend:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+      args:
+        API_BASE_URL: http://127.0.0.1:${BACKEND_PORT}
+    container_name: trustassistant_frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
   db:
     image: postgres:16
     container_name: trustassistant_postgres

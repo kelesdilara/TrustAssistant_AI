@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/api_service.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -12,11 +14,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+  final ApiService _apiService = ApiService();
 
   bool isPasswordVisible = false;
   bool isConfirmPasswordVisible = false;
+  bool isLoading = false;
 
-  void _register() {
+  Future<void> _register() async {
     final name = nameController.text.trim();
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
@@ -26,41 +30,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty) {
-      _showMessage('Lütfen tüm alanları doldur.');
+      _showMessage('Lutfen tum alanlari doldur.');
       return;
     }
 
     if (!email.contains('@')) {
-      _showMessage('Geçerli bir e-posta adresi gir.');
+      _showMessage('Gecerli bir e-posta adresi gir.');
       return;
     }
 
     if (password.length < 6) {
-      _showMessage('Şifre en az 6 karakter olmalı.');
+      _showMessage('Sifre en az 6 karakter olmali.');
       return;
     }
 
     if (password != confirmPassword) {
-      _showMessage('Şifreler eşleşmiyor.');
+      _showMessage('Sifreler eslesmiyor.');
       return;
     }
 
-    _showMessage('Üyelik başarılı. Giriş ekranına yönlendiriliyorsun.');
-    Future.delayed(const Duration(milliseconds: 700), () {
-      Navigator.pop(context);
+    setState(() {
+      isLoading = true;
     });
+
+    try {
+      await _apiService.register(email: email, password: password);
+      _showMessage('Uyelik basarili.');
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (error) {
+      _showMessage('$error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Üye Ol')),
+      appBar: AppBar(title: const Text('Uye Ol')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -72,13 +89,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 18),
             const Text(
-              'Güvenli Alışveriş Hesabı Oluştur',
+              'Guvenli Alisveris Hesabi Olustur',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Analiz geçmişini saklamak ve kişisel öneriler almak için hesap oluştur.',
+              'Analiz gecmisini saklamak ve kisisel oneriler almak icin hesap olustur.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white70),
             ),
@@ -104,7 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: passwordController,
               obscureText: !isPasswordVisible,
               decoration: InputDecoration(
-                labelText: 'Şifre',
+                labelText: 'Sifre',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -123,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: confirmPasswordController,
               obscureText: !isConfirmPasswordVisible,
               decoration: InputDecoration(
-                labelText: 'Şifre Tekrar',
+                labelText: 'Sifre Tekrar',
                 prefixIcon: const Icon(Icons.lock_reset_outlined),
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -144,8 +161,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               width: double.infinity,
               height: 52,
               child: FilledButton(
-                onPressed: _register,
-                child: const Text('Hesap Oluştur'),
+                onPressed: isLoading ? null : _register,
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Hesap Olustur'),
               ),
             ),
           ],

@@ -20,5 +20,6 @@ class Analysis(Base):
     discount_analysis = Column(String, nullable=True)
 
     risk_factors = Column(JSON, nullable=True)
+    analysis_payload = Column(JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

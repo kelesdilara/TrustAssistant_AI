@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/api_service.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -10,33 +12,48 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final ApiService _apiService = ApiService();
 
   bool isPasswordVisible = false;
+  bool isLoading = false;
 
-  void _login() {
+  Future<void> _login() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      _showMessage('Lütfen e-posta ve şifre alanlarını doldur.');
+      _showMessage('Lutfen e-posta ve sifre alanlarini doldur.');
       return;
     }
 
     if (!email.contains('@')) {
-      _showMessage('Geçerli bir e-posta adresi gir.');
+      _showMessage('Gecerli bir e-posta adresi gir.');
       return;
     }
 
-    _showMessage('Giriş başarılı. Ana ekrana yönlendiriliyorsun.');
-    Future.delayed(const Duration(milliseconds: 700), () {
-      Navigator.pop(context);
+    setState(() {
+      isLoading = true;
     });
+
+    try {
+      await _apiService.login(email: email, password: password);
+      _showMessage('Giris basarili.');
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (error) {
+      _showMessage('$error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -55,12 +72,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Tekrar Hoş Geldin',
+                'Tekrar Hos Geldin',
                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Analiz geçmişini görmek ve güvenli alışverişe devam etmek için giriş yap.',
+                'Analiz gecmisini gormek ve guvenli alisverise devam etmek icin giris yap.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white70),
               ),
@@ -78,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: passwordController,
                 obscureText: !isPasswordVisible,
                 decoration: InputDecoration(
-                  labelText: 'Şifre',
+                  labelText: 'Sifre',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -99,14 +116,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 52,
                 child: FilledButton(
-                  onPressed: _login,
-                  child: const Text('Giriş Yap'),
+                  onPressed: isLoading ? null : _login,
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Giris Yap'),
                 ),
               ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => Navigator.pushNamed(context, '/register'),
-                child: const Text('Hesabın yok mu? Üye ol'),
+                child: const Text('Hesabin yok mu? Uye ol'),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
