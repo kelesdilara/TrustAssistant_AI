@@ -13,10 +13,11 @@ def seller_trust_agent(state: AnalysisState) -> AnalysisState:
         )
         return state
 
-    seller_rating = seller_info.get("seller_rating")
+    seller_rating = seller_info.get("seller_rating")       # 10 üzerinden (sayfadan çekildi)
     review_count = seller_info.get("review_count", 0)
     complaint_count = seller_info.get("complaint_count", 0)
     is_official = seller_info.get("is_official", False)
+    product_rating = seller_info.get("product_rating")     # 5 üzerinden (sayfadan çekildi)
 
     seller_score = 55
     reasons = []
@@ -32,20 +33,35 @@ def seller_trust_agent(state: AnalysisState) -> AnalysisState:
         reasons.append("Satıcı resmi mağaza gibi görünüyor.")
 
     if isinstance(seller_rating, (int, float)):
+        # seller_rating 10 üzerinden
         if seller_rating >= 9:
             seller_score += 20
-            reasons.append("Satıcı puanı yüksek görünüyor.")
+            reasons.append(f"Satıcı puanı yüksek ({seller_rating}/10).")
         elif seller_rating >= 8:
             seller_score += 12
-            reasons.append("Satıcı puanı kabul edilebilir seviyede.")
+            reasons.append(f"Satıcı puanı kabul edilebilir ({seller_rating}/10).")
         elif seller_rating >= 7:
             seller_score += 5
-            reasons.append("Satıcı puanı orta seviyede.")
+            reasons.append(f"Satıcı puanı orta seviyede ({seller_rating}/10).")
         else:
             seller_score -= 10
-            reasons.append("Satıcı puanı düşük görünüyor.")
+            reasons.append(f"Satıcı puanı düşük ({seller_rating}/10).")
     else:
         reasons.append("Satıcı puanı alınamadı.")
+
+    # Ürünün kendi yıldız puanı varsa faktöre kat
+    if isinstance(product_rating, (int, float)):
+        if product_rating >= 4.5:
+            seller_score += 10
+            reasons.append(f"Ürün müşteri puanı çok yüksek ({product_rating}/5).")
+        elif product_rating >= 4.0:
+            seller_score += 5
+            reasons.append(f"Ürün müşteri puanı iyi ({product_rating}/5).")
+        elif product_rating < 3.0:
+            seller_score -= 10
+            reasons.append(f"Ürün müşteri puanı düşük ({product_rating}/5).")
+        else:
+            reasons.append(f"Ürün müşteri puanı orta ({product_rating}/5).")
 
     if review_count >= 1000:
         seller_score += 10

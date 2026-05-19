@@ -20,10 +20,12 @@ def build_trendyol_review_url(product_url: str) -> str:
 
 def scrape_trendyol_reviews(page: Page, product_url: str, max_reviews: int = 80) -> List[Dict]:
     review_url = build_trendyol_review_url(product_url)
+    print(f"TRENDYOL REVIEW URL: {review_url}")
 
     try:
         page.goto(review_url, wait_until="domcontentloaded", timeout=30000)
         page.wait_for_timeout(2000)
+        print(f"TRENDYOL PAGE TITLE: {page.title()}")
 
         reviews: List[Dict] = []
         seen = set()
@@ -36,7 +38,7 @@ def scrape_trendyol_reviews(page: Page, product_url: str, max_reviews: int = 80)
         idle_rounds = 0
         last_count = 0
 
-        for _ in range(180):
+        for _ in range(50):
             _collect_visible_reviews(page, reviews, seen, max_reviews)
             if len(reviews) >= max_reviews:
                 return reviews[:max_reviews]
@@ -47,7 +49,7 @@ def scrape_trendyol_reviews(page: Page, product_url: str, max_reviews: int = 80)
                 idle_rounds = 0
                 last_count = len(reviews)
 
-            if idle_rounds >= 12:
+            if idle_rounds >= 8:
                 break
 
             page.mouse.wheel(0, 1400)
@@ -63,9 +65,11 @@ def scrape_trendyol_reviews(page: Page, product_url: str, max_reviews: int = 80)
             for review in fallback_reviews:
                 _add_review(reviews, seen, review, max_reviews)
 
+        print(f"TRENDYOL REVIEWS FOUND: {len(reviews)}")
         return reviews[:max_reviews]
 
-    except Exception:
+    except Exception as e:
+        print(f"TRENDYOL ERROR: {e}")
         return []
 
 
@@ -128,10 +132,13 @@ def _collect_reviews_from_api(
     if not product_id:
         return []
 
+    merchant_id = _extract_merchant_id(product_url)
+    merchant_suffix = f"&merchantId={merchant_id}" if merchant_id else ""
+
     candidates = [
+        f"https://public-mdc.trendyol.com/discovery-web-socialgw-service/reviews/{product_id}?page={{page}}&size=30{merchant_suffix}",
         f"https://public-mdc.trendyol.com/discovery-web-socialgw-service/reviews/{product_id}?page={{page}}&size=30",
-        f"https://public.trendyol.com/discovery-web-socialgw-service/reviews/{product_id}?page={{page}}&size=30",
-        f"https://www.trendyol.com/discovery-web-socialgw-service/reviews/{product_id}?page={{page}}&size=30",
+        f"https://public.trendyol.com/discovery-web-socialgw-service/reviews/{product_id}?page={{page}}&size=30{merchant_suffix}",
     ]
     reviews: List[Dict] = []
     seen = set()
@@ -212,6 +219,11 @@ def _extract_product_id(product_url: str) -> str | None:
     if match:
         return match.group(1)
     return None
+
+
+def _extract_merchant_id(product_url: str) -> str | None:
+    match = re.search(r"merchantId=(\d+)", product_url)
+    return match.group(1) if match else None
 
 
 def _add_review(

@@ -66,7 +66,7 @@ def search_product_links(
     product_name: str,
     enabled_marketplaces: list[str] | None = None,
     headless: bool = True,
-    per_marketplace_timeout_ms: int = 20000,
+    per_marketplace_timeout_ms: int = 10000,
     max_workers: int = 4,
 ) -> Dict[str, str]:
     found_links: Dict[str, str] = {}
@@ -135,29 +135,9 @@ def _search_single_marketplace(
     timeout_ms: int,
 ) -> Optional[str]:
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=headless,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-            ],
-        )
-
-        page = browser.new_page(
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1366, "height": 900},
-            locale="tr-TR",
-            timezone_id="Europe/Istanbul",
-        )
-
-        page.set_extra_http_headers(
-            {
-                "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-            }
-        )
+        from backend.app.services.browser_factory import launch_stealth_browser, new_stealth_page
+        browser = launch_stealth_browser(p, headless=headless)
+        page = new_stealth_page(browser)
 
         try:
             page.goto(search_url, wait_until="domcontentloaded", timeout=timeout_ms)

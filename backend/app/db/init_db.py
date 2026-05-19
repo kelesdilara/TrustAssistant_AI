@@ -33,8 +33,15 @@ def _run_lightweight_migrations(engine) -> None:
 
     analysis_columns = {column["name"] for column in inspector.get_columns("analyses")}
 
-    with engine.begin() as connection:
-        if "user_id" not in analysis_columns:
-            connection.execute(text("ALTER TABLE analyses ADD COLUMN user_id INTEGER"))
-        if "analysis_payload" not in analysis_columns:
-            connection.execute(text("ALTER TABLE analyses ADD COLUMN analysis_payload JSON"))
+    pending = []
+    if "user_id" not in analysis_columns:
+        pending.append("ALTER TABLE analyses ADD COLUMN user_id INTEGER")
+    if "analysis_payload" not in analysis_columns:
+        pending.append("ALTER TABLE analyses ADD COLUMN analysis_payload JSON")
+
+    for sql in pending:
+        try:
+            with engine.begin() as connection:
+                connection.execute(text(sql))
+        except SQLAlchemyError as exc:
+            logger.warning("Migration skipped (already applied): %s", exc)

@@ -154,7 +154,7 @@ def scrape_generic_marketplace_reviews(
 
             idle_rounds = 0
             last_count = 0
-            for _ in range(160):
+            for _ in range(50):
                 page.mouse.wheel(0, 1100)
                 page.wait_for_timeout(400)
 
@@ -175,7 +175,7 @@ def scrape_generic_marketplace_reviews(
                     idle_rounds = 0
                     last_count = len(reviews)
 
-                if reviews and idle_rounds >= 12:
+                if reviews and idle_rounds >= 8:
                     break
 
             if not reviews:

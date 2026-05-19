@@ -23,7 +23,6 @@ dependencies = [
     "langchain-ollama",
     "typing-extensions",
     "playwright",
-    "chromadb",
 ]
 
 [tool.setuptools.packages.find]

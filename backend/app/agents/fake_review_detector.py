@@ -47,6 +47,26 @@ def fake_review_detector_agent(state: AnalysisState) -> AnalysisState:
             f"{review_count} yorum incelendi. Yorumlarda belirgin bir tekrar veya sahte yorum sinyali tespit edilmedi."
         )
 
+    # Ortalama yıldız puanını skora dahil et
+    ratings = [
+        r.get("rating") for r in reviews
+        if isinstance(r.get("rating"), (int, float)) and 1 <= r.get("rating") <= 5
+    ]
+    if ratings:
+        avg_rating = sum(ratings) / len(ratings)
+        if avg_rating >= 4.5:
+            adjustment = -15
+        elif avg_rating >= 4.0:
+            adjustment = -10
+        elif avg_rating >= 3.5:
+            adjustment = -5
+        elif avg_rating < 3.0:
+            adjustment = +15
+        else:
+            adjustment = 0
+        fake_review_score = max(0, min(100, fake_review_score + adjustment))
+        review_analysis += f" Ortalama yıldız puanı: {avg_rating:.1f}/5."
+
     if 0 < review_count < sample_minimum:
         review_analysis += (
             f" Hedef {sample_target} yorumdu; {sample_minimum} altinda kaldigi icin sonuc guclu kanit degil."

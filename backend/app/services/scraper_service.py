@@ -6,7 +6,7 @@ from playwright.sync_api import (
     sync_playwright,
     TimeoutError as PlaywrightTimeoutError,
 )
-
+from backend.app.services.browser_factory import launch_stealth_browser, new_stealth_page
 from backend.app.services.review_orchestrator_service import collect_reviews_from_sources
 
 
@@ -15,40 +15,20 @@ def scrape_product_data_sync(product_url: str, max_reviews_per_source: int = 80)
     needs_visible_browser = _needs_visible_browser(lower_url)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=not needs_visible_browser,
-            slow_mo=80 if needs_visible_browser else 0,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-            ],
-        )
-
-        page = browser.new_page(
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/122.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1366, "height": 900},
-            locale="tr-TR",
-            timezone_id="Europe/Istanbul",
-        )
-
-        page.set_extra_http_headers({
-            "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-        })
+        browser = launch_stealth_browser(p, headless=not needs_visible_browser)
+        page = new_stealth_page(browser)
 
         try:
             page.goto(product_url, wait_until="domcontentloaded", timeout=30000)
 
             if needs_visible_browser:
-                page.wait_for_timeout(7000)
-                page.mouse.move(300, 400)
-                page.wait_for_timeout(1000)
-                page.mouse.wheel(0, 500)
-                page.wait_for_timeout(2000)
-            else:
                 page.wait_for_timeout(4000)
+                page.mouse.move(300, 400)
+                page.wait_for_timeout(500)
+                page.mouse.wheel(0, 500)
+                page.wait_for_timeout(1000)
+            else:
+                page.wait_for_timeout(2000)
 
             json_ld_data = _extract_json_ld(page)
 
@@ -100,19 +80,51 @@ def scrape_product_data_sync(product_url: str, max_reviews_per_source: int = 80)
                     [
                         "[data-test-id='merchant-name']",
                         "[data-testid='seller-name']",
+                        "[data-test-id='seller-name']",
                         ".seller-name",
                         ".merchant-name",
-                        ".seller",
-                        "[class*='seller']",
-                        "[class*='Seller']",
-                        "[class*='merchant']",
-                        "[class*='Merchant']",
+                        "[class*='sellerName']",
+                        "[class*='SellerName']",
+                        "[class*='seller-name']",
+                        "[class*='merchantName']",
+                        "span[class*='seller']",
+                        "a[class*='seller']",
                     ],
                 )
                 or json_ld_data.get("seller")
             )
 
-            # --- Düzeltilen Kısım Başlangıcı ---
+            # Satıcı puanı (10 üzerinden — Hepsiburada, Trendyol vb.)
+            seller_rating_text = _get_first_text(
+                page,
+                [
+                    "[data-test-id='seller-score']",
+                    "[data-test-id='merchant-score']",
+                    "[class*='sellerScore']",
+                    "[class*='SellerScore']",
+                    "[class*='seller-score']",
+                    "[class*='merchantScore']",
+                    "[class*='MerchantScore']",
+                ],
+            )
+            seller_rating = _parse_seller_rating(seller_rating_text)
+
+            # Ürün yıldız puanı (5 üzerinden)
+            product_rating_text = _get_first_text(
+                page,
+                [
+                    "[data-test-id='product-rating']",
+                    "[data-testid='product-rating']",
+                    "[class*='productRating']",
+                    "[class*='ProductRating']",
+                    "[class*='rating-score']",
+                    "[class*='ratingScore']",
+                    "[class*='StarRating']",
+                    "[itemprop='ratingValue']",
+                ],
+            )
+            product_rating = _parse_product_rating(product_rating_text)
+
             security_blocked = _is_security_page(product_name, page)
 
             if security_blocked:
@@ -136,6 +148,8 @@ def scrape_product_data_sync(product_url: str, max_reviews_per_source: int = 80)
                 "product_url": product_url,
                 "product_name": _clean_text(product_name) or "Ürün adı bulunamadı",
                 "seller_name": _clean_text(seller_name) or None,
+                "seller_rating": seller_rating,
+                "product_rating": product_rating,
                 "price": _clean_text(price) or None,
                 "reviews": reviews,
                 "review_count": len(reviews),
@@ -189,6 +203,36 @@ def _is_security_page(product_name, page) -> bool:
 def _needs_visible_browser(lower_url: str) -> bool:
     visible_domains = []
     return any(domain in lower_url for domain in visible_domains)
+
+
+def _parse_seller_rating(text: str | None) -> float | None:
+    """Satıcı puanını float olarak çıkar (10 üzerinden → 10 üzerinden döner)."""
+    if not text:
+        return None
+    numbers = re.findall(r"\d+[.,]?\d*", text.replace(",", "."))
+    for n in numbers:
+        try:
+            v = float(n)
+            if 0 < v <= 10:
+                return round(v, 1)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_product_rating(text: str | None) -> float | None:
+    """Ürün yıldız puanını float olarak çıkar (5 üzerinden)."""
+    if not text:
+        return None
+    numbers = re.findall(r"\d+[.,]?\d*", text.replace(",", "."))
+    for n in numbers:
+        try:
+            v = float(n)
+            if 0 < v <= 5:
+                return round(v, 1)
+        except ValueError:
+            continue
+    return None
 
 
 def _seller_name_for_blocked_page(product_url: str) -> Optional[str]:
@@ -271,8 +315,12 @@ def _extract_price_from_text(text: str) -> Optional[str]:
 
 def _extract_product_name_from_url(url: str) -> str:
     try:
-        slug = url.split("/")[-1]
-        slug = slug.split("-p-")[0]
+        clean = url.split("?")[0].split("#")[0]
+        slug = clean.split("/")[-1]
+        if "-p-" in slug:
+            slug = slug.split("-p-")[0]
+        elif "-pm-" in slug:
+            slug = slug.split("-pm-")[0]
         slug = slug.replace("-", " ")
         return slug.title()
     except Exception:

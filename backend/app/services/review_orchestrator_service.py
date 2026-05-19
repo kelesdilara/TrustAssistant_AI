@@ -23,6 +23,7 @@ REVIEW_SCRAPERS: dict[str, tuple[str, Callable]] = {
     "teknosa.com": ("teknosa", scrape_teknosa_reviews),
     "e-bebek.com": ("ebebek", scrape_ebebek_reviews),
     "lcwaikiki.com": ("lcwaikiki", scrape_lcwaikiki_reviews),
+    "lcw.com": ("lcwaikiki", scrape_lcwaikiki_reviews),        # lcw.com alias
     "gratis.com": ("gratis", scrape_gratis_reviews),
     "watsons.com.tr": ("watsons", scrape_watsons_reviews),
     "mediamarkt.com.tr": ("mediamarkt", scrape_mediamarkt_reviews),

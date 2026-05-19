@@ -120,24 +120,9 @@ def scrape_akakce_prices(product_name: str | None, max_prices: int = 8) -> dict:
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--disable-dev-shm-usage",
-                    "--no-sandbox",
-                ],
-            )
-            page = browser.new_page(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/122.0.0.0 Safari/537.36"
-                ),
-                viewport={"width": 1366, "height": 900},
-                locale="tr-TR",
-                timezone_id="Europe/Istanbul",
-            )
+            from backend.app.services.browser_factory import launch_stealth_browser, new_stealth_page
+            browser = launch_stealth_browser(p, headless=True)
+            page = new_stealth_page(browser)
             page.set_default_timeout(5000)
             page.route(
                 "**/*",
@@ -192,24 +177,9 @@ def scrape_cimri_prices(product_name: str | None, max_prices: int = 8) -> dict:
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--disable-dev-shm-usage",
-                    "--no-sandbox",
-                ],
-            )
-            page = browser.new_page(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/122.0.0.0 Safari/537.36"
-                ),
-                viewport={"width": 1366, "height": 900},
-                locale="tr-TR",
-                timezone_id="Europe/Istanbul",
-            )
+            from backend.app.services.browser_factory import launch_stealth_browser, new_stealth_page
+            browser = launch_stealth_browser(p, headless=True)
+            page = new_stealth_page(browser)
             page.set_default_timeout(5000)
             page.route(
                 "**/*",

@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+import asyncio
+import functools
+import hashlib
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-from backend.app.agents.graph import build_analysis_graph
 from backend.app.api.deps import get_optional_current_user
 from backend.app.db.database import get_db
 from backend.app.models.user import User
@@ -15,6 +19,7 @@ from backend.app.services.analysis_repository import (
     save_analysis_result,
 )
 
+CACHE_TTL_SECONDS = 3600
 
 router = APIRouter(
     prefix="/analysis",
@@ -33,25 +38,44 @@ def get_analysis_history(
 
 
 @router.post("/", response_model=AnalysisResponse)
-def create_analysis(
+async def create_analysis(
+    req: Request,
     request: AnalysisRequest,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
-    graph = build_analysis_graph()
+    redis = getattr(req.app.state, "redis", None)
+    cache_key = _cache_key(request)
 
-    result = graph.invoke(
-        {
-            "product_url": request.product_url,
-            "product_name": request.product_name,
-            "seller_name": request.seller_name,
-            "search_mode": request.search_mode,
-        }
-    )
+    if redis:
+        try:
+            cached = await redis.get(cache_key)
+            if cached:
+                return AnalysisResponse(**json.loads(cached))
+        except Exception:
+            pass
+
+    graph = req.app.state.analysis_graph
+    initial_state = {
+        "product_url": request.product_url,
+        "product_name": request.product_name,
+        "seller_name": request.seller_name,
+        "search_mode": request.search_mode,
+    }
+
+    loop = asyncio.get_running_loop()
+    try:
+        result = await asyncio.wait_for(
+            loop.run_in_executor(None, functools.partial(graph.invoke, initial_state)),
+            timeout=180.0,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Analiz zaman aşımına uğradı (3 dakika). Lütfen tekrar deneyin.")
+
     user_id = current_user.id if current_user else None
     analysis_id = save_analysis_result(db, result, user_id=user_id)
 
-    return AnalysisResponse(
+    response = AnalysisResponse(
         analysis_id=analysis_id,
         analysis_scope=result.get("analysis_scope"),
         overall_trust_score=result["overall_trust_score"],
@@ -80,3 +104,21 @@ def create_analysis(
         price_search_url=result.get("price_search_url"),
         price_search_urls=result.get("price_search_urls", {}),
     )
+
+    if redis:
+        try:
+            await redis.setex(cache_key, CACHE_TTL_SECONDS, response.model_dump_json())
+        except Exception:
+            pass
+
+    return response
+
+
+def _cache_key(request: AnalysisRequest) -> str:
+    raw = "|".join([
+        (request.product_url or "").strip().lower().rstrip("/"),
+        (request.product_name or "").strip().lower(),
+        (request.seller_name or "").strip().lower(),
+        request.search_mode,
+    ])
+    return "analysis:" + hashlib.sha256(raw.encode()).hexdigest()

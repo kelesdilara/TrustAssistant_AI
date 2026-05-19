@@ -44,8 +44,8 @@ LINK_ANALYSIS_MARKETPLACES = [
     "mediamarkt",
 ]
 
-MAX_REVIEWS_PER_SOURCE = 1000
-MIN_STRONG_REVIEW_SAMPLE = 500
+MAX_REVIEWS_PER_SOURCE = 50
+MIN_STRONG_REVIEW_SAMPLE = 20
 MAX_ANALYSIS_SOURCES = 6
 
 
@@ -69,29 +69,16 @@ def collect_all_product_data(
         )
         price = product_data.get("price")
         resolved_product_name = product_data.get("product_name") or product_name
-        resolved_seller_name = product_data.get("seller_name") or seller_name
-        source_links = _source_links_for_product_url(
-            product_url=product_url,
-            product_name=resolved_product_name,
+        resolved_seller_name = (
+            product_data.get("seller_name")
+            or seller_name
+            or _infer_seller_from_url(product_url)
         )
         original_source = _marketplace_from_url(product_url) or "source"
-        links_to_scrape = {
-            platform: link
-            for platform, link in source_links.items()
-            if platform != original_source
-        }
-        scrape_results = {original_source: product_data}
-        scrape_results.update(_scrape_source_links(links_to_scrape))
-        all_reviews, review_sources, source_review_counts, scraped_products = (
-            _collect_reviews_from_scrape_results(scrape_results)
-        )
-        if not all_reviews:
-            all_reviews = product_data.get("reviews", [])
-        all_reviews = _dedupe_reviews(all_reviews)
-        if not review_sources:
-            review_sources = product_data.get("review_sources", [])
-        for source in product_data.get("review_sources", []):
-            source_review_counts.setdefault(source, product_data.get("review_count", 0))
+        source_links = {original_source: product_url}
+        all_reviews = _dedupe_reviews(product_data.get("reviews", []))
+        review_sources = product_data.get("review_sources", [original_source])
+        source_review_counts = {original_source: len(all_reviews)}
 
         complaint_result = get_complaint_signals(
             seller_name=resolved_seller_name,
@@ -119,7 +106,7 @@ def collect_all_product_data(
             "review_sources": review_sources,
             "source_review_counts": source_review_counts,
             "source_links": source_links,
-            "scraped_products": scraped_products,
+            "scraped_products": [product_data],
             "review_sample_target": MAX_REVIEWS_PER_SOURCE,
             "review_sample_minimum": MIN_STRONG_REVIEW_SAMPLE,
             "complaints": complaint_result.get("complaints", []),
@@ -139,6 +126,8 @@ def collect_all_product_data(
                 seller_name=resolved_seller_name,
                 product_url=product_url,
                 complaint_count=seller_complaint_count,
+                seller_rating=product_data.get("seller_rating"),
+                product_rating=product_data.get("product_rating"),
             ),
         }
 
@@ -359,6 +348,8 @@ def _marketplace_from_url(product_url: str) -> str | None:
         "teknosa.com": "teknosa",
         "mediamarkt.com.tr": "mediamarkt",
         "vatanbilgisayar.com": "vatan",
+        "lcwaikiki.com": "lcwaikiki",
+        "lcw.com": "lcwaikiki",
     }
     for domain, marketplace in domain_map.items():
         if domain in host:
@@ -376,6 +367,22 @@ def _site_name_from_url(product_url: str) -> str | None:
         "lcwaikiki": "LC Waikiki",
     }
     return site_names.get(marketplace, marketplace.title())
+
+
+def _infer_seller_from_url(product_url: str) -> str | None:
+    """Yalnızca kesin olarak bilinen durumlarda satıcıyı çıkar."""
+    lower = product_url.lower()
+    # -pm- = Hepsiburada Premium Market → satıcı kesinlikle Hepsiburada
+    if "hepsiburada.com" in lower and "-pm-" in lower:
+        return "Hepsiburada"
+    # Teknosa, MediaMarkt, Vatan kendi sitelerinde hep kendileri satıcı
+    if "teknosa.com" in lower:
+        return "Teknosa"
+    if "mediamarkt.com.tr" in lower:
+        return "MediaMarkt"
+    if "vatanbilgisayar.com" in lower:
+        return "Vatan Bilgisayar"
+    return None
 
 
 def _empty_complaint_result() -> dict:
