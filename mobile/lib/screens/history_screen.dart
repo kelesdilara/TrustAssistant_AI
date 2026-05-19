@@ -16,13 +16,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _historyFuture = _apiService.fetchAnalysisHistory();
+    _historyFuture = _loadHistory();
   }
 
   void _reload() {
     setState(() {
-      _historyFuture = _apiService.fetchAnalysisHistory();
+      _historyFuture = _loadHistory();
     });
+  }
+
+  Future<List<Map<String, dynamic>>> _loadHistory() async {
+    if (!await _apiService.isSignedIn()) {
+      return [];
+    }
+    return _apiService.fetchAnalysisHistory();
   }
 
   @override
@@ -31,10 +38,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(
         title: const Text('Analiz Gecmisi'),
         actions: [
-          IconButton(
-            onPressed: _reload,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -56,7 +60,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemBuilder: (context, index) => _HistoryCard(item: items[index]),
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemCount: items.length,
           );
         },
@@ -204,7 +208,10 @@ class _HistoryCard extends StatelessWidget {
 
   String _joinList(dynamic value) {
     if (value is! List) return '';
-    return value.where((item) => item != null).map((item) => '$item').join(', ');
+    return value
+        .where((item) => item != null)
+        .map((item) => '$item')
+        .join(', ');
   }
 }
 

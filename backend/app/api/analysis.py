@@ -33,6 +33,9 @@ def get_analysis_history(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_current_user),
 ):
+    if current_user is None:
+        return []
+
     user_id = current_user.id if current_user else None
     return list_recent_analyses(db, limit=limit, user_id=user_id)
 

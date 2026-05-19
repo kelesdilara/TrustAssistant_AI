@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _showMessage('Giris basarili.');
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
     } catch (error) {
       _showMessage('$error');
     } finally {
@@ -53,7 +53,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -132,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text('Hesabin yok mu? Uye ol'),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.maybePop(context),
                 child: const Text('Misafir olarak devam et'),
               ),
             ],

@@ -21,7 +21,9 @@ class ApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException('Analiz istegi basarisiz oldu: ${response.statusCode}');
+      throw ApiException(
+        'Analiz istegi basarisiz oldu: ${response.statusCode}',
+      );
     }
 
     final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -41,7 +43,9 @@ class ApiService {
         .timeout(const Duration(seconds: 20));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException('Gecmis istegi basarisiz oldu: ${response.statusCode}');
+      throw ApiException(
+        'Gecmis istegi basarisiz oldu: ${response.statusCode}',
+      );
     }
 
     final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -87,10 +91,7 @@ class ApiService {
         .post(
           uri,
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'email': email.trim(),
-            'password': password,
-          }),
+          body: jsonEncode({'email': email.trim(), 'password': password}),
         )
         .timeout(const Duration(seconds: 30));
 
@@ -114,6 +115,24 @@ class ApiService {
     await preferences.setString('user_email', userEmail);
 
     return userEmail;
+  }
+
+  Future<String?> currentUserEmail() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.reload();
+    final email = preferences.getString('user_email');
+    if (email == null || email.isEmpty) {
+      return null;
+    }
+    return email;
+  }
+
+  Future<bool> isSignedIn() async => (await currentUserEmail()) != null;
+
+  Future<void> logout() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove('access_token');
+    await preferences.remove('user_email');
   }
 
   Map<String, dynamic> _buildRequestBody(String input) {
@@ -168,7 +187,9 @@ class ApiService {
         reviewSampleMinimum > 0 &&
         reviewCount is int &&
         reviewCount < reviewSampleMinimum) {
-      buffer.writeln('Not: $reviewSampleMinimum altinda yorumla sonuc sinirlidir.');
+      buffer.writeln(
+        'Not: $reviewSampleMinimum altinda yorumla sonuc sinirlidir.',
+      );
     }
     if (reviewSources.isNotEmpty) {
       buffer.writeln('Yorum kaynaklari: $reviewSources');
@@ -216,7 +237,10 @@ class ApiService {
 
   String _joinList(dynamic value) {
     if (value is! List) return '';
-    return value.where((item) => item != null).map((item) => '$item').join(', ');
+    return value
+        .where((item) => item != null)
+        .map((item) => '$item')
+        .join(', ');
   }
 
   int _listLength(dynamic value) {

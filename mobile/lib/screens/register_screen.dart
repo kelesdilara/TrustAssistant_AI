@@ -58,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showMessage('Uyelik basarili.');
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
     } catch (error) {
       _showMessage('$error');
     } finally {
@@ -71,7 +71,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
